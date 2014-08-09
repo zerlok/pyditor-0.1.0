@@ -1,0 +1,14 @@
+syntax: glob
+*.orig
+*.pyc
+*.project
+*.pydevproject
+*.sqlite3
+*.blend
+*.blend1
+*.svg
+
+syntax: regexp
+^_samples/.*
+static/img/.*
+seed/init/.*
