@@ -8,4 +8,5 @@ All functionality is same as in Eclipse.
 * It's better!
 * It's new
 
-In developments since 07 aug 2014
+
+In development since 07 aug 2014
