@@ -22,21 +22,21 @@ import pyditor_operators as py_ops
 
 
 #
-#   Editor header
+#   	Editor header
 #
 class PYDITOR_HT_header(Header):
 	bl_space_type = 'TEXT_EDITOR'
-	bl_idname = 'TEXT_HT_header' # Here I replaced the header to Text Editor
+	bl_idname = 'TEXT_HT_header' # Here I replaced the header in Text Editor
 	
 	def draw(self, context):
 		layout = self.layout
 		
-		# Editors Menu
+		# Main Menu
 		row = layout.row(align=True)
 		row.template_header()
 		
+		# Pysitor menu
 		PYDITOR_MT_header_menus.draw_collapsible(context, layout)
-#		PYDITOR_MT_header_menus.draw_collapsible(context, layout)
 
 
 class PYDITOR_MT_header_menus(Menu):
@@ -48,7 +48,6 @@ class PYDITOR_MT_header_menus(Menu):
 	
 	@staticmethod
 	def draw_menus(layout, context):
-		layout.alignment = 'EXPAND'
 		layout.menu("PYDITOR_MT_file")
 		layout.menu("PYDITOR_MT_edit")
 		layout.menu("PYDITOR_MT_source")
@@ -105,6 +104,7 @@ class PYDITOR_MT_source(Menu):
 		col.separator()
 		
 		col.operator("pyditor.comment_line", text="Toggle comment line")
+		col.operator("pyditor.paste_an_comment_block", text="Create comment block").border_char = '-'
 
 
 class PYDITOR_MT_navigate(Menu):
@@ -116,15 +116,7 @@ class PYDITOR_MT_navigate(Menu):
 		col = layout.column()
 		
 		for text in bpy.data.texts:
-			label = text.name
-			
-			if text.is_dirty and not text.is_in_memory:
-				label = '* %s' % label
-			
-			if py_ops.is_active_text(text, context):
-				label = '>>> %s' % label
-			
-			col.operator("pyditor.switch_file", text=label).filename = text.name
+			py_ops.draw_switcher_button(col, text)
 
 
 class PYDITOR_MT_search(Menu):
@@ -133,7 +125,7 @@ class PYDITOR_MT_search(Menu):
 	
 	def draw(self, context):
 		self.layout.label(self.bl_label)
-#		self.layout.template_list(context.scene, 'my_list', context.scene, 'my_list_index', rows= 3)
+#	   self.layout.template_list(context.scene, 'my_list', context.scene, 'my_list_index', rows= 3)
 
 
 class PYDITOR_MT_project(Menu):
@@ -182,6 +174,34 @@ class PYDITOR_MT_help(Menu):
 		flow.label("ver %s.%s.%s" % bl_info['version'])
 
 
+#
+#   	Side panels
+#
+class PYDITOR_PT_browser(Panel):
+	bl_idname = 'TEXT_PT_properties'
+	bl_space_type = 'TEXT_EDITOR'
+	bl_region_type = 'UI'
+	bl_label = "Project Browser"
+	
+	def draw(self, context):
+		layout = self.layout
+
+
+def TEXT_PT_find(Panel):
+	bl_idname = 'TEXT_PT_find'
+	bl_space_type = 'TEXT_EDITOR'
+	bl_region_type = 'UI'
+	bl_label = ""
+
+	def draw(self, context):
+		layout = self.layout
+		
+		layout.label("huichishe")
+
+
+#
+#		Make it as add-on
+#
 def register():
 	bpy.utils.register_module(__name__)
 	bpy.utils.register_module(py_ops.__name__)

@@ -5,13 +5,26 @@ import bpy
 
 
 #
-#	Files navigation button
+#		Files navigation button
 #
-def is_active_text(text, context):
-	return context.area.spaces.active.text.name == text.name
+def draw_switcher_button(layout, text):
+	label = text.name
+	icon = 'NONE'
+	
+	if text.is_dirty and not text.is_in_memory:
+		label = '* %s' % label
+	
+	if is_active_text(text):
+		icon = 'SPACE3'
+	
+	layout.operator("pyditor.switch_file", text=label, icon=icon).filename = text.name
 
 
-class PYDITOR_OT_file_switcher_button(Operator):
+def is_active_text(text):
+	return bpy.context.area.spaces.active.text.name == text.name
+
+
+class PYDITOR_OT_switch_file(Operator):
 	bl_idname = "pyditor.switch_file"
 	bl_label = "Button"
 	filename = StringProperty()
@@ -29,7 +42,7 @@ class PYDITOR_OT_file_switcher_button(Operator):
 
 
 #
-#	Comment Line operator
+#		Comment Line operator
 #
 def is_commented(line):
 	return line.body.startswith('#')
@@ -67,10 +80,9 @@ def uncomment_line(line):
 	return {'FINISHED'}
 
 
-#	comment button
 class PYDITOR_OT_Comment_line(Operator):
-	bl_idname = "pyditor.comment_line"
-	bl_label = "Add/Remove Comment"
+	bl_idname = 'pyditor.comment_line'
+	bl_label = 'Add/Remove Comment'
 	
 	@classmethod
 	def poll(self, context):
@@ -87,6 +99,36 @@ class PYDITOR_OT_Comment_line(Operator):
 		return {'FINISHED'}
 
 
+#
+#		Comment Block
+#
+class PYDITOR_OT_Comment_block(Operator):
+	bl_idname = 'pyditor.paste_an_comment_block'
+	bl_label = 'Paste a simple comment block'
+	border_char = StringProperty()
+	
+	@classmethod
+	def poll(self, context):
+		return context.area.type == 'TEXT_EDITOR'
+
+	def execute(self, context):
+		border = '#{}'.format(self.border_char*40)
+		center = '#\t\t'
+		code = context.edit_text
+		
+		bpy.ops.text.move(type='LINE_BEGIN')
+#		code.write('\n'.join((border, center, border, '')))
+		bpy.ops.text.insert(text='\n'.join((border, center, border, '')))
+		bpy.ops.text.move(type='PREVIOUS_LINE')
+		bpy.ops.text.move(type='PREVIOUS_LINE')
+		bpy.ops.text.move(type='LINE_END')
+		
+		return {'FINISHED'}
+	
+
+#
+#		Make it as add-on
+#
 def register():
 	register_module(__name__)
 
