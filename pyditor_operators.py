@@ -1,7 +1,14 @@
 from bpy.types import Operator
 from bpy.props import StringProperty
 from bpy.utils import register_module, unregister_module
+from re import sub
 import bpy
+
+
+#
+#		PATTERNS
+#
+space_chars_ptrn = r'^\s+|\s+$'
 
 
 #
@@ -44,6 +51,10 @@ class PYDITOR_OT_switch_file(Operator):
 #
 #		Comment Line operator
 #
+def is_not_empty_line(line):
+	return sub(space_chars_ptrn, '', line.body)
+
+
 def is_commented(line):
 	return line.body.startswith('#')
 
@@ -93,7 +104,7 @@ class PYDITOR_OT_Comment_line(Operator):
 		
 		if is_commented(code.current_line):
 			uncomment_line(code.current_line)
-		else:
+		elif is_not_empty_line(code.current_line):
 			comment_line(code.current_line)
 
 		return {'FINISHED'}
