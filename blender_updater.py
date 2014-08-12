@@ -44,10 +44,12 @@ def get_all_blender_versions_list(ftp):
 	bl_versions_lst = []
 	dirs_lst = []
 	
+	# List directories of current working directory at ftp server
 	ftp.retrlines('NLST', callback=lambda x: dirs_lst.append(x))
 	
 	for dirname in dirs_lst:
-		mo=match(bl_dir_ptrn, dirname)
+		# Match only Blender version dirs
+		mo = match(bl_dir_ptrn, dirname)
 		
 		if mo:
 			bl_versions_lst.append((
@@ -73,7 +75,8 @@ def get_blender_files_list(bl_ver, ftp):
 	'''Returns the files list of indicated version at ftp'''
 	version_dir = 'Blender{}.{}{}'.format(bl_ver[0], bl_ver[1], bl_ver[2])
 	ftp.cwd(version_dir)
-		
+	
+	# Save list of this blender version install files
 	files_lst = []
 	ftp.retrlines('NLST', callback=lambda x: files_lst.append(x))
 	
@@ -82,13 +85,16 @@ def get_blender_files_list(bl_ver, ftp):
 
 def filter_blenders_versions(files_lst):
 	'''Filters the files list for current operating system at current machine'''
+	# Only for current operating system
 	os_name = platform().lower()[:2] # First 3 letters of os name
-	files_lst = [bl_file for bl_file in files_lst if os_name in bl_file] # Only for current operating system
-
-	os_mach = machine() # (32 bit / 64 bit)
-	files_lst = [bl_file for bl_file in files_lst if os_mach in bl_file] # Only for current machine
+	filtered_files_lst = [filename for filename in files_lst if os_name in filename]
 	
-	return files_lst
+	# Only for current machine
+	os_mach = machine() # (32 bit / 64 bit)
+	filtered_files_lst = [filename for filename in filtered_files_lst if os_mach in filename]
+	
+	# If the blender for current os was not found, return the full files list
+	return filtere_files_lst if filtered_files_lst else files_lst
 
 
 #
@@ -102,8 +108,11 @@ def download_blender_file(filename, ftp):
 			result = ftp.retrbinary('RETR %s' % filename, callback=bl_file.write)
 	
 		return filepath if result == '226 Transfer complete.' else result
+	
 	else:
-		return "%s already exists" % filepath
+		print("%s already exists" % filepath)
+		
+		return filepath
 
 
 #
@@ -122,6 +131,7 @@ class USERPREF_OT_blender_updater(bpy.types.Operator):
 	bl_space_type = 'USER_PREFERENCES'
 	bl_region_type = 'WINDOW'
 	bl_label = "Updates Checker"
+	bl_description = "Checks for new blender versions at official ftp server"
 	
 	@classmethod
 	def poll(self, context):
@@ -129,20 +139,27 @@ class USERPREF_OT_blender_updater(bpy.types.Operator):
 
 	def execute(self, context):
 		# Connect to ftp server
-		ftp = FTP(FTP_URL)
+		try:
+			ftp = FTP(FTP_URL)
+		
+		except:
+			self.report({'WARNING'}, "Cannot connect to '%s'. Check your internet connection!" % FTP_URL)
+		
+			return {'CANCELLED'}
+		
+		# Login as anonymous and change working directory
 		ftp.login()
 		ftp.cwd(FTP_DIR)
-		# TODO: Except 'No connection' error
 		
-		# Get versions list
-		bl_versions_lst = get_all_blender_versions_list(ftp) # All Blender versions at ftp url
+		# Get all versions
+		bl_versions_lst = get_all_blender_versions_list(ftp)
 		# Check for higher versions of blender
-		higher_versions_lst = get_upper_versions_list(bl_versions_lst) # Upper versions
+		higher_versions_lst = get_upper_versions_list(bl_versions_lst)
 		
 		if higher_versions_lst:
-			self.report({'INFO'}, "New versions of Blender are available!")
-			# TODO: Make chooser
-			# TODO: Run Downloader
+			self.report({'INFO'}, "New versions of Blender are available! (%s - the last one)" % higher_versions_lst[-1])
+			# TODO: Make version choicer
+			# TODO: Run version Downloader
 		else:
 			self.report({'INFO'}, "You already have a highest version of Blender %s" % bpy.app.version_string)
 
@@ -152,11 +169,24 @@ class USERPREF_OT_blender_updater(bpy.types.Operator):
 #
 #		Button drawer
 #
-def draw_updates_checker(self, context):
+def draw_program_updater(self, context):
 	layout = self.layout
-	row = layout.row()
+	col = layout.column()
+	
+	row = col.row()
 	row.alignment = 'LEFT'
-	row.operator("program.check_for_updates", text='Check for new versions', icon='FILE_REFRESH')
+	
+	subcol = row.column()
+	subcol.alignment = 'LEFT'
+	subcol.label("Program version:")
+	
+	subcol = row.column()
+	subcol.alignment = 'RIGHT'
+	subcol.label(bpy.app.version_string[:4])
+	
+	row = col.row()
+	row.alignment = 'LEFT'
+	row.operator("program.check_for_updates", text='Check for Updates', icon='FILE_REFRESH')
 
 
 #
@@ -164,12 +194,12 @@ def draw_updates_checker(self, context):
 #
 def register():
 	bpy.utils.register_class(USERPREF_OT_blender_updater)
-	bpy.types.USERPREF_PT_system.append(draw_updates_checker)
+	bpy.types.USERPREF_PT_system.append(draw_program_updater)
 
 
 def unregister():
 	bpy.utils.unregister_class(USERPREF_OT_blender_updater)
-	bpy.types.USERPREF_PT_system.remove(draw_updates_checker)
+	bpy.types.USERPREF_PT_system.remove(draw_program_updater)
 
 
 if __name__ == "__main__":
