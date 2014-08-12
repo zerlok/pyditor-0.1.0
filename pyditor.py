@@ -30,13 +30,16 @@ class PYDITOR_HT_header(Header):
 	
 	def draw(self, context):
 		layout = self.layout
+		code = context.edit_text
 		
 		# Main Menu
 		row = layout.row(align=True)
 		row.template_header()
 		
-		# Pysitor menu
+		# Pyditor menu
 		PYDITOR_MT_header_menus.draw_collapsible(context, layout)
+		
+		layout.label("Text: %s%s" % ('* ' if code.is_dirty else '', code.name))
 
 
 class PYDITOR_MT_header_menus(Menu):
@@ -44,7 +47,7 @@ class PYDITOR_MT_header_menus(Menu):
 	bl_label = ""
 	
 	def draw(self, context):
-		self.draw_menus(self.layout, context)
+		self.draw_menus(self.layout, context)	
 	
 	@staticmethod
 	def draw_menus(layout, context):
@@ -81,6 +84,9 @@ class PYDITOR_MT_file(Menu):
 
 			if text.filepath:
 				layout.operator("text.make_internal")
+			
+			layout.separator()
+			layout.operator("text.unlink", text="Close", icon="CANCEL")
 
 
 class PYDITOR_MT_edit(Menu):
@@ -88,7 +94,22 @@ class PYDITOR_MT_edit(Menu):
 	bl_label = "Edit"
 	
 	def draw(self, context):
-		self.layout.label(self.bl_label)
+		layout = self.layout
+
+		layout.operator("ed.undo")
+		layout.operator("ed.redo")
+
+		layout.separator()
+
+		layout.operator("text.cut")
+		layout.operator("text.copy")
+		layout.operator("text.paste")
+		layout.operator("text.duplicate_line")
+
+		layout.separator()
+
+		layout.operator("text.move_lines", text="Move line(s) up").direction = 'UP'
+		layout.operator("text.move_lines", text="Move line(s) down").direction = 'DOWN'
 	
 		
 class PYDITOR_MT_source(Menu):
@@ -97,14 +118,60 @@ class PYDITOR_MT_source(Menu):
 	
 	def draw(self,context):
 		layout = self.layout
+		flow = layout.column_flow()
 		
-		col = layout.column()
-		col.label(self.bl_label)
+		flow.operator("text.autocomplete")
 		
-		col.separator()
+		flow.separator()
 		
-		col.operator("pyditor.comment_line", text="Toggle comment line")
-		col.operator("pyditor.paste_an_comment_block", text="Create comment block").border_char = '-'
+		# Comments operators
+		flow.operator("pyditor.comment_line", text="Toggle comment line")
+		
+		# Comment blocks
+		# 1
+		op_comment_block = flow.operator(
+				"pyditor.paste_an_comment_block",
+				text="Create a standart comment block",
+		)
+		print(dir(op_comment_block))
+		op_comment_block.border = '-'
+		op_comment_block.height = 1
+		op_comment_block.width = 50
+		op_comment_block.centered = True
+		op_comment_block.title = ''
+		
+		# 2	
+		op_simple_comment_block = flow.operator(
+				"pyditor.paste_an_comment_block",
+				text="Create a simple comment block",
+		)
+		op_simple_comment_block.border = ''
+		op_simple_comment_block.height = 1
+		op_simple_comment_block.width = 0
+		op_simple_comment_block.centered = True
+		op_simple_comment_block.title = ''
+		
+		# 3
+		op_super_comment_block = flow.operator(
+				"pyditor.paste_an_comment_block",
+				text="Create a super comment block",
+		)
+		op_super_comment_block.border = '#'
+		op_super_comment_block.height = 3
+		op_super_comment_block.width = 50
+		op_super_comment_block.centered = True
+		op_super_comment_block.title = ''
+		
+		# 4
+		op_annotation_block = flow.operator(
+				"pyditor.paste_an_comment_block",
+				text="Create an annotation block",
+		)
+		op_annotation_block.border = '#'
+		op_annotation_block.height = 10
+		op_annotation_block.width = 80
+		op_annotation_block.centered = False
+		op_annotation_block.title = 'ANNOTATION'
 
 
 class PYDITOR_MT_navigate(Menu):
@@ -113,10 +180,14 @@ class PYDITOR_MT_navigate(Menu):
 	
 	def draw(self, context):
 		layout = self.layout
-		col = layout.column()
+#		col = layout.column()
+		layout.label("Linked files:")
 		
 		for text in bpy.data.texts:
-			py_ops.draw_switcher_button(col, text)
+			py_ops.draw_switcher_button(layout, text)
+		
+		layout.separator()
+		layout.operator("text.jump")
 
 
 class PYDITOR_MT_search(Menu):
@@ -124,8 +195,8 @@ class PYDITOR_MT_search(Menu):
 	bl_label = "Search"
 	
 	def draw(self, context):
-		self.layout.label(self.bl_label)
-#	   self.layout.template_list(context.scene, 'my_list', context.scene, 'my_list_index', rows= 3)
+		self.layout.operator("text.start_find", text="Find")
+#		self.layout.label(self.bl_label)
 
 
 class PYDITOR_MT_project(Menu):
@@ -133,7 +204,9 @@ class PYDITOR_MT_project(Menu):
 	bl_label = "Project"
 	
 	def draw(self, context):
-		self.layout.label(self.bl_label)
+		layout = self.layout
+		
+		layout.operator("pyditor.insert_bl_info", text="Insert script info")
 
 
 class PYDITOR_MT_run(Menu):
@@ -159,7 +232,11 @@ class PYDITOR_MT_window(Menu):
 	bl_label = "Window"
 	
 	def draw(self, context):
-		self.layout.label(self.bl_label)
+		layout = self.layout
+		flow = layout.column_flow()
+		
+		flow.label(self.bl_label)
+		flow.label("Preferences")
 
 
 class PYDITOR_MT_help(Menu):
@@ -178,7 +255,7 @@ class PYDITOR_MT_help(Menu):
 #   	Side panels
 #
 class PYDITOR_PT_browser(Panel):
-	bl_idname = 'TEXT_PT_properties'
+#	bl_idname = 'TEXT_PT_properties'
 	bl_space_type = 'TEXT_EDITOR'
 	bl_region_type = 'UI'
 	bl_label = "Project Browser"
@@ -187,6 +264,7 @@ class PYDITOR_PT_browser(Panel):
 		layout = self.layout
 
 
+# TODO: Replace the base 'Finder'
 def TEXT_PT_find(Panel):
 	bl_idname = 'TEXT_PT_find'
 	bl_space_type = 'TEXT_EDITOR'

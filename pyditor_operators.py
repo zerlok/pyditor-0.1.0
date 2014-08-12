@@ -1,5 +1,5 @@
 from bpy.types import Operator
-from bpy.props import StringProperty
+from bpy.props import BoolProperty, IntProperty, StringProperty
 from bpy.utils import register_module, unregister_module
 from re import sub
 import bpy
@@ -115,24 +115,119 @@ class PYDITOR_OT_Comment_line(Operator):
 #
 class PYDITOR_OT_Comment_block(Operator):
 	bl_idname = 'pyditor.paste_an_comment_block'
-	bl_label = 'Paste a simple comment block'
-	border_char = StringProperty()
+	bl_label = 'Comment block'
 	
+	border = StringProperty(
+			name = 'Border',
+			description = "Set the char at border",
+			maxlen = 1,
+			default = '#',
+	)
+	
+	width = IntProperty(
+			name = 'Block width',
+			description = "The comment block width in chars",
+			min = 0,
+			max = 100,
+			default = 50,
+	)
+	
+	height = IntProperty(
+			name = 'Block height',
+			description = "The number of lines between top and bottom borders",
+			min = 1,
+			step = 2,
+			max = 100,
+			default = 1,
+	)
+	
+	centered = BoolProperty(
+			name = 'Text at center',
+			description = "Align the body text at center",
+			default = True,
+	)
+
+	title = StringProperty(
+			name = 'Title',
+			description = "The title of comment block",
+			maxlen = 50,
+			default = '',
+	)
+
 	@classmethod
 	def poll(self, context):
 		return context.area.type == 'TEXT_EDITOR'
 
 	def execute(self, context):
-		border = '#{}'.format(self.border_char*40)
-		center = '#\t\t'
+		top_border = '#{}{}{}'.format(
+				self.border * ((self.width - len(self.title))// 2),
+				self.title,
+				self.border * ((self.width - len(self.title))// 2),
+		)
+		bottom_border = '#{}'.format(self.border * self.width)
+		space_line = '#'
+		body = '#\t'
+		centered_body = '#\t\t'
+		
+		if self.centered:
+			# Just a comment block
+			comment_block = '\n'.join(
+					[top_border] + 
+					[space_line] * (self.height // 2) +
+					[centered_body] +
+					[space_line] * (self.height // 2) +
+					[bottom_border] +
+					['']
+			)
+			
+			# Lines between body text and cursor
+			lines_to_body = (self.height // 2) + 2
+		
+		else:
+			# An annotation block
+			comment_block = '\n'.join(
+					[top_border] + 
+					[space_line] +
+					[body] +
+					[space_line] * (self.height - 2) +
+					[bottom_border] +
+					['']
+			)
+			# Lines between body text and cursor
+			lines_to_body = self.height
+		
 		code = context.edit_text
 		
 		bpy.ops.text.move(type='LINE_BEGIN')
-#		code.write('\n'.join((border, center, border, '')))
-		bpy.ops.text.insert(text='\n'.join((border, center, border, '')))
-		bpy.ops.text.move(type='PREVIOUS_LINE')
-		bpy.ops.text.move(type='PREVIOUS_LINE')
+		bpy.ops.text.insert(text=comment_block)
+		
+		for i in range(lines_to_body):
+			bpy.ops.text.move(type='PREVIOUS_LINE')
+		
 		bpy.ops.text.move(type='LINE_END')
+		
+		return {'FINISHED'}
+	
+
+class PYDITOR_OT_insert_bl_info(Operator):
+	bl_idname = 'pyditor.insert_bl_info'
+	bl_label = 'Insert blender script info'
+	bl_description = 'Insert bl_info dictionary at top of the file'
+	
+	@classmethod
+	def poll(self, context):
+		return context.area.type == 'TEXT_EDITOR'
+	
+	def execute(self, context):
+		from pyditor_templates import bl_info_template
+		
+		bpy.ops.text.move(type='FILE_TOP')
+		
+		if not 'bl_info' in context.edit_text.current_line.body:
+			bpy.ops.text.insert(text=bl_info_template.format(
+					proj_name = context.edit_text.name,
+					bl_version = str(bpy.app.version),
+			))
 		
 		return {'FINISHED'}
 	
